@@ -209,3 +209,5 @@ dataset/IIT GNSS Hackathon
 dataset/test.csv
 dataset/train.csv
 dataset/test/
+dataset/train/
+dataset/val/
