@@ -3,6 +3,7 @@ import numpy as np
 from sklearn.model_selection import TimeSeriesSplit
 from collections import Counter
 
+## SAVING TRAINING AND VALIDATION DATASET
 def processing_channel(df, channel, train_size=0.7):
     # Filter and sort by channel and time
     cols=[]
