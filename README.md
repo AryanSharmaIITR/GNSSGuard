@@ -153,11 +153,36 @@ classDiagram
 
 ### What each piece is doing
 
-- **Preprocessing (`datapreprocessing.py`).** Split by `channel`, sort by time, and for each target timestamp grab the 100 samples that came before it. Stamp every window with a `batch_id` so downstream `groupby` operations are O(1). Rows where all observables are exactly zero get dropped first; those are tracking drop-outs, not usable history.
-- **TimeSeriesTransformer.** A vanilla 3-layer encoder with sinusoidal position embeddings. Pretrained as a forecaster: predict the target row's feature vector from the 100-sample history. The pre-projection latent (a 128-d vector) ends up being more useful downstream than the forecast itself.
-- **ImageAnalysis.** Same 100-sample window, but the target row is concatenated on so the model sees 101 rows. A smaller Transformer shapes it, then a Conv2d stack treats the `(seq, feat)` matrix like an image. Ends with global average pooling and a 128-d feature + a binary logit.
-- **Head.** A small MLP (`LayerNorm → Linear → GELU → Dropout → Linear → Linear`) over the concatenated features. Trained with `BCEWithLogitsLoss`.
-- **XGBoost.** Two roles. On the fused features it's the actual production classifier, tuned with Optuna across 50 trials on macro-F1. There's also a single-row XGBoost baseline (`xgb_single_row_model.pkl`) that only sees the current snapshot; it's the "no temporal context" control, to show whether the window is buying anything.
+Preprocessing (`code/datapreprocessing.py`) does the boring but load-bearing
+work. Split by `channel`, sort by `time`, and for each target timestamp
+grab the 100 samples that came before it. Every window gets stamped with a
+`batch_id` so the downstream `groupby` is O(1). Rows where all observables
+are exactly zero get dropped first, because those are tracking drop-outs
+and they poison any model you train on them.
+
+The `TimeSeriesTransformer` is a vanilla 3-layer encoder with sinusoidal
+position embeddings. It's pretrained as a forecaster: predict the target
+row's feature vector from the 100-sample history. What actually matters
+downstream isn't the forecast itself but the 128-d latent just before the
+output projection; that vector is what ends up in the fused feature.
+
+The `ImageAnalysis` branch looks at the same window from a different
+angle. We concatenate the target row onto the end so the model sees 101
+rows × 14 features, then a smaller Transformer (`d_model=64`) shapes it
+before a Conv2d stack treats the resulting matrix like an image. It ends
+with global average pooling and spits out a 128-d feature plus a binary
+logit.
+
+The small `Head` is an MLP (`LayerNorm → Linear → GELU → Dropout → Linear
+→ Linear`) trained with `BCEWithLogitsLoss` on the concatenated features
+from both branches plus the current row.
+
+XGBoost plays two roles. On the fused features it's the actual production
+classifier, tuned with Optuna across 50 trials on macro-F1. Separately,
+`xgb_single_row_model.pkl` is a no-context baseline that only sees the
+current snapshot; it's there so we can tell whether the 100-sample window
+is buying anything, and on well-behaved data it's more competitive than
+you'd expect.
 
 ## Training pipeline
 
