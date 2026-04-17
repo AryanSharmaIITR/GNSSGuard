@@ -189,7 +189,9 @@ python code/datapreprocessing.py
 jupyter lab notebook/
 ```
 
-Dependencies: `torch`, `pandas`, `numpy`, `scikit-learn`, `xgboost`, `optuna`, `tqdm`, `matplotlib`, `scipy`. GPU is optional; the code falls back to CPU automatically.
+Dependencies are pinned in `requirements.txt` (`pip install -r requirements.txt`). Core stack: `torch`, `pandas`, `numpy`, `scikit-learn`, `xgboost`, `optuna`, `tqdm`, `matplotlib`, `scipy`. GPU is optional; the code falls back to CPU automatically.
+
+For a stage-by-stage history of how the pipeline was built, see [`CHANGELOG.md`](CHANGELOG.md).
 
 ## Output
 
